@@ -31,6 +31,8 @@ export default async function ChequesPage({
     sortBy?: string;
     sortDir?: string;
     project?: string;
+    dueDateFrom?: string;
+    dueDateTo?: string;
   }>;
 }) {
   const filters = await searchParams;
@@ -61,6 +63,14 @@ export default async function ChequesPage({
       supportsOwnBank && filters.ownBank ? { ownBank: filters.ownBank as OwnBank } : {},
       supportsHasIvaClient && filters.hasIvaClient === "SI" ? { hasIvaClient: true } : {},
       supportsHasIvaClient && filters.hasIvaClient === "NO" ? { hasIvaClient: false } : {},
+      filters.dueDateFrom || filters.dueDateTo
+        ? {
+            paymentDate: {
+              ...(filters.dueDateFrom ? { gte: new Date(`${filters.dueDateFrom}T00:00:00`) } : {}),
+              ...(filters.dueDateTo ? { lte: new Date(`${filters.dueDateTo}T23:59:59.999`) } : {}),
+            },
+          }
+        : {},
       filters.project
         ? {
             OR: [
@@ -133,6 +143,8 @@ export default async function ChequesPage({
     if (filters.bank) params.set("bank", filters.bank);
     if (filters.ownBank) params.set("ownBank", filters.ownBank);
     if (filters.hasIvaClient) params.set("hasIvaClient", filters.hasIvaClient);
+    if (filters.dueDateFrom) params.set("dueDateFrom", filters.dueDateFrom);
+    if (filters.dueDateTo) params.set("dueDateTo", filters.dueDateTo);
 
     const nextDir: Prisma.SortOrder = sortBy === column && sortDir === "asc" ? "desc" : "asc";
     params.set("sortBy", column);

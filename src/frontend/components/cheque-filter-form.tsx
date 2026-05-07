@@ -16,6 +16,8 @@ interface Props {
     sortBy?: string;
     sortDir?: string;
     project?: string; // comma-separated
+    dueDateFrom?: string;
+    dueDateTo?: string;
   };
   ownBankLabels: Record<string, string>;
 }
@@ -37,12 +39,16 @@ export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLa
     const bank = data.get("bank") as string;
     const ownBank = data.get("ownBank") as string;
     const hasIvaClient = data.get("hasIvaClient") as string;
+    const dueDateFrom = data.get("dueDateFrom") as string;
+    const dueDateTo = data.get("dueDateTo") as string;
 
     if (q) params.set("q", q);
     if (status) params.set("status", status);
     if (bank) params.set("bank", bank);
     if (ownBank) params.set("ownBank", ownBank);
     if (hasIvaClient) params.set("hasIvaClient", hasIvaClient);
+    if (dueDateFrom) params.set("dueDateFrom", dueDateFrom);
+    if (dueDateTo) params.set("dueDateTo", dueDateTo);
 
     // Multi-select projects
     const selected = selectRef.current
@@ -58,7 +64,7 @@ export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLa
   }
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto]">
+    <form onSubmit={handleSubmit} className="grid gap-3 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_1fr_auto] md:grid-rows-[1fr_auto]">
       <input
         className="field"
         name="q"
@@ -114,6 +120,22 @@ export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLa
       <button className="button button-primary" type="submit">
         Filtrar
       </button>
+      <div className="flex items-center gap-2 md:col-span-7">
+        <span className="text-xs text-[var(--muted)] whitespace-nowrap">Vence entre</span>
+        <input
+          className="field"
+          type="date"
+          name="dueDateFrom"
+          defaultValue={current.dueDateFrom ?? ""}
+        />
+        <span className="text-xs text-[var(--muted)]">y</span>
+        <input
+          className="field"
+          type="date"
+          name="dueDateTo"
+          defaultValue={current.dueDateTo ?? ""}
+        />
+      </div>
     </form>
   );
 }
