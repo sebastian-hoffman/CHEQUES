@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cheques-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cheques
+      POSTGRES_PASSWORD: cheques
+      POSTGRES_DB: cheques_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - cheques_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cheques -d cheques_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  cheques_postgres_data:

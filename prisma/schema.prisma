@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cheque {
+  id                  String                @id @default(cuid())
+  canonicalKey        String                @unique
+  sourceChequeId      String?
+  number              String?
+  cmc7                String?
+  echeqId             String?
+  status              ChequeStatus          @default(UNKNOWN)
+  sourceStatus        String?
+  sourceActionStatus  String?
+  sourceKind          ImportSource          @default(MANUAL)
+  flow                ChequeFlow            @default(RECEIVED)
+  issueType           String?
+  issuerTaxId         String?
+  issuerName          String?
+  bankRaw             String?
+  bankCode            String?
+  bankName            String?
+  bankCanonical       String?
+  endosoHistory       String?
+  issueDate           DateTime?
+  paymentDate         DateTime?
+  amount              Decimal?              @db.Decimal(18, 2)
+  currency            String?
+  account             String?
+  endorseeTaxId       String?
+  endorseeName        String?
+  assignedById        String?
+  projectId           String?
+  rawData             Json?
+  lastImportedAt      DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  ownBank             OwnBank?
+  hasIvaClient        Boolean               @default(false)
+  ivaClientId         String?
+  counterparty        Counterparty?         @relation(fields: [assignedById], references: [id])
+  ivaClient           IvaClient?            @relation(fields: [ivaClientId], references: [id])
+  project             Project?              @relation(fields: [projectId], references: [id])
+  chequeStatusHistory ChequeStatusHistory[]
+  discounts           Discount[]
+
+  @@index([bankCanonical])
+  @@index([ivaClientId])
+  @@index([projectId])
+  @@index([status, paymentDate])
+}
+
+model ChequeStatusHistory {
+  id            String        @id @default(cuid())
+  chequeId      String
+  fromStatus    ChequeStatus?
+  toStatus      ChequeStatus
+  source        ImportSource
+  observedAt    DateTime      @default(now())
+  note          String?
+  details       Json?
+  endorseeName  String?
+  endorseeTaxId String?
+  cheque        Cheque        @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+
+  @@index([chequeId, observedAt])
+}
+
+model Counterparty {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cheques   Cheque[]
+}
+
+model Discount {
+  id          String         @id @default(cuid())
+  chequeId    String
+  bank        String
+  requestedAt DateTime?
+  settledAt   DateTime?
+  grossAmount Decimal?       @db.Decimal(18, 2)
+  feeAmount   Decimal?       @db.Decimal(18, 2)
+  netAmount   Decimal?       @db.Decimal(18, 2)
+  reference   String?
+  status      DiscountStatus @default(REQUESTED)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  cheque      Cheque         @relation(fields: [chequeId], references: [id], onDelete: Cascade)
+
+  @@index([chequeId])
+}
+
+model ImportBatch {
+  id         String       @id @default(cuid())
+  fileName   String
+  source     ImportSource
+  rowCount   Int
+  importedAt DateTime     @default(now())
+}
+
+model IvaClient {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cheques   Cheque[]
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cheques   Cheque[]
+}
+
+enum ChequeFlow {
+  RECEIVED
+  ISSUED
+}
+
+enum ChequeStatus {
+  RECEIVED
+  ENDORSED
+  CUSTODY
+  ACCEPTED
+  REJECTED
+  DISCOUNTED
+  PAID
+  ISSUED
+  PENDING
+  UNKNOWN
+}
+
+enum DiscountStatus {
+  REQUESTED
+  SETTLED
+  REJECTED
+  CANCELLED
+}
+
+enum ImportSource {
+  RECEIVED_FILE
+  ENDORSED_FILE
+  CUSTODY_FILE
+  ISSUED_FILE
+  MANUAL
+}
+
+enum OwnBank {
+  SANTANDER
+  BBVA
+  BAPRO
+  OTHER
+}
