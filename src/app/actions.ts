@@ -1,6 +1,6 @@
 "use server";
 
-import { DiscountStatus, OwnBank } from "@prisma/client";
+import { ChequeStatus, DiscountStatus, ImportSource, OwnBank } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { hasDatabaseUrl } from "@/backend/state/database-state";
@@ -235,4 +235,55 @@ export async function createDiscountAction(formData: FormData) {
   revalidatePath(`/cheques/${chequeId}`);
   revalidatePath("/");
   revalidatePath("/cheques");
+}
+
+export async function updateChequeManualStatusAction(formData: FormData) {
+  if (!hasDatabaseUrl()) {
+    throw new Error("Configura DATABASE_URL antes de actualizar estados");
+  }
+
+  const chequeId = String(formData.get("chequeId") ?? "").trim();
+  const nextStatusRaw = String(formData.get("nextStatus") ?? "").trim();
+
+  if (!chequeId) {
+    throw new Error("Falta el cheque a actualizar");
+  }
+
+  const allowedStatuses: ChequeStatus[] = [ChequeStatus.CUSTODY, ChequeStatus.ENDORSED, ChequeStatus.DISCOUNTED];
+  if (!allowedStatuses.includes(nextStatusRaw as ChequeStatus)) {
+    throw new Error("Estado manual no permitido");
+  }
+
+  const nextStatus = nextStatusRaw as ChequeStatus;
+  const cheque = await prisma.cheque.findUnique({
+    where: { id: chequeId },
+    select: { id: true, status: true },
+  });
+
+  if (!cheque) {
+    throw new Error("Cheque no encontrado");
+  }
+
+  if (cheque.status === nextStatus) {
+    return;
+  }
+
+  await prisma.cheque.update({
+    where: { id: chequeId },
+    data: { status: nextStatus },
+  });
+
+  await prisma.chequeStatusHistory.create({
+    data: {
+      chequeId,
+      fromStatus: cheque.status,
+      toStatus: nextStatus,
+      source: ImportSource.MANUAL,
+      note: "Cambio manual desde listado de cheques",
+    },
+  });
+
+  revalidatePath("/cheques");
+  revalidatePath(`/cheques/${chequeId}`);
+  revalidatePath("/");
 }

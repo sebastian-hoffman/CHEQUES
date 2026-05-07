@@ -6,6 +6,7 @@ import { OwnBank, Prisma } from "@prisma/client";
 import { BulkAssignForm } from "@/frontend/components/bulk-assign-form";
 import { ChequeFilterForm } from "@/frontend/components/cheque-filter-form";
 import { DatabaseEmptyState } from "@/frontend/components/database-empty-state";
+import { ManualStatusForm } from "@/frontend/components/manual-status-form";
 import { StatusPill } from "@/frontend/components/status-pill";
 import { getDatabaseSetupMessage, hasDatabaseUrl, isDatabaseSetupError } from "@/backend/state/database-state";
 import { formatCurrency, formatDate } from "@/shared/format";
@@ -39,6 +40,11 @@ export default async function ChequesPage({
   const sortBy = filters.sortBy ?? "paymentDate";
   const sortDir: Prisma.SortOrder = filters.sortDir === "asc" ? "asc" : "desc";
   const amountQuery = parseAmountQuery(filters.q);
+  const selectedStatuses = parseCsv(filters.status);
+  const selectedBanks = parseCsv(filters.bank);
+  const selectedOwnBanks = parseCsv(filters.ownBank);
+  const selectedHasIvaClient = parseCsv(filters.hasIvaClient);
+  const selectedProjects = parseCsv(filters.project);
   const supportsOwnBank = hasChequeField("ownBank");
   const supportsHasIvaClient = hasChequeField("hasIvaClient");
 
@@ -58,11 +64,15 @@ export default async function ChequesPage({
             ],
           }
         : {},
-      filters.status ? { status: filters.status as never } : {},
-      filters.bank ? { bankCanonical: filters.bank } : {},
-      supportsOwnBank && filters.ownBank ? { ownBank: filters.ownBank as OwnBank } : {},
-      supportsHasIvaClient && filters.hasIvaClient === "SI" ? { hasIvaClient: true } : {},
-      supportsHasIvaClient && filters.hasIvaClient === "NO" ? { hasIvaClient: false } : {},
+      selectedStatuses.length > 0 ? { status: { in: selectedStatuses as never[] } } : {},
+      selectedBanks.length > 0 ? { bankCanonical: { in: selectedBanks } } : {},
+      supportsOwnBank && selectedOwnBanks.length > 0 ? { ownBank: { in: selectedOwnBanks as OwnBank[] } } : {},
+      supportsHasIvaClient && selectedHasIvaClient.includes("SI") && !selectedHasIvaClient.includes("NO")
+        ? { hasIvaClient: true }
+        : {},
+      supportsHasIvaClient && selectedHasIvaClient.includes("NO") && !selectedHasIvaClient.includes("SI")
+        ? { hasIvaClient: false }
+        : {},
       filters.dueDateFrom || filters.dueDateTo
         ? {
             paymentDate: {
@@ -71,13 +81,13 @@ export default async function ChequesPage({
             },
           }
         : {},
-      filters.project
+      selectedProjects.length > 0
         ? {
             OR: [
-              ...(filters.project.split(",").filter((v) => v !== "__SIN_PROYECTO__").length > 0
-                ? [{ project: { name: { in: filters.project.split(",").filter((v) => v !== "__SIN_PROYECTO__") } } }]
+              ...(selectedProjects.filter((v) => v !== "__SIN_PROYECTO__").length > 0
+                ? [{ project: { name: { in: selectedProjects.filter((v) => v !== "__SIN_PROYECTO__") } } }]
                 : []),
-              ...(filters.project.split(",").includes("__SIN_PROYECTO__")
+              ...(selectedProjects.includes("__SIN_PROYECTO__")
                 ? [{ projectId: null }]
                 : []),
             ],
@@ -143,6 +153,7 @@ export default async function ChequesPage({
     if (filters.bank) params.set("bank", filters.bank);
     if (filters.ownBank) params.set("ownBank", filters.ownBank);
     if (filters.hasIvaClient) params.set("hasIvaClient", filters.hasIvaClient);
+    if (filters.project) params.set("project", filters.project);
     if (filters.dueDateFrom) params.set("dueDateFrom", filters.dueDateFrom);
     if (filters.dueDateTo) params.set("dueDateTo", filters.dueDateTo);
 
@@ -235,6 +246,7 @@ export default async function ChequesPage({
                   <td>{cheque.bankCanonical ?? cheque.bankName ?? "-"}</td>
                   <td>
                     <StatusPill status={cheque.status} />
+                    <ManualStatusForm chequeId={cheque.id} currentStatus={cheque.status} />
                   </td>
                 </tr>
               ))}
@@ -251,6 +263,17 @@ export default async function ChequesPage({
       </section>
     </div>
   );
+}
+
+function parseCsv(value: string | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function parseAmountQuery(value: string | undefined) {

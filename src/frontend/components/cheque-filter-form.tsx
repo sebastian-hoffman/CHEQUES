@@ -24,8 +24,16 @@ interface Props {
 
 export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLabels }: Props) {
   const router = useRouter();
-  const selectRef = useRef<HTMLSelectElement>(null);
+  const statusRef = useRef<HTMLSelectElement>(null);
+  const bankRef = useRef<HTMLSelectElement>(null);
+  const ownBankRef = useRef<HTMLSelectElement>(null);
+  const hasIvaClientRef = useRef<HTMLSelectElement>(null);
+  const projectRef = useRef<HTMLSelectElement>(null);
 
+  const selectedStatuses = current.status ? current.status.split(",").filter(Boolean) : [];
+  const selectedBanks = current.bank ? current.bank.split(",").filter(Boolean) : [];
+  const selectedOwnBanks = current.ownBank ? current.ownBank.split(",").filter(Boolean) : [];
+  const selectedHasIvaClient = current.hasIvaClient ? current.hasIvaClient.split(",").filter(Boolean) : [];
   const selectedProjects = current.project ? current.project.split(",").filter(Boolean) : [];
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -35,24 +43,26 @@ export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLa
     const params = new URLSearchParams();
 
     const q = data.get("q") as string;
-    const status = data.get("status") as string;
-    const bank = data.get("bank") as string;
-    const ownBank = data.get("ownBank") as string;
-    const hasIvaClient = data.get("hasIvaClient") as string;
+    const status = statusRef.current ? Array.from(statusRef.current.selectedOptions).map((o) => o.value) : [];
+    const bank = bankRef.current ? Array.from(bankRef.current.selectedOptions).map((o) => o.value) : [];
+    const ownBank = ownBankRef.current ? Array.from(ownBankRef.current.selectedOptions).map((o) => o.value) : [];
+    const hasIvaClient = hasIvaClientRef.current
+      ? Array.from(hasIvaClientRef.current.selectedOptions).map((o) => o.value)
+      : [];
     const dueDateFrom = data.get("dueDateFrom") as string;
     const dueDateTo = data.get("dueDateTo") as string;
 
     if (q) params.set("q", q);
-    if (status) params.set("status", status);
-    if (bank) params.set("bank", bank);
-    if (ownBank) params.set("ownBank", ownBank);
-    if (hasIvaClient) params.set("hasIvaClient", hasIvaClient);
+    if (status.length > 0) params.set("status", status.join(","));
+    if (bank.length > 0) params.set("bank", bank.join(","));
+    if (ownBank.length > 0) params.set("ownBank", ownBank.join(","));
+    if (hasIvaClient.length > 0) params.set("hasIvaClient", hasIvaClient.join(","));
     if (dueDateFrom) params.set("dueDateFrom", dueDateFrom);
     if (dueDateTo) params.set("dueDateTo", dueDateTo);
 
     // Multi-select projects
-    const selected = selectRef.current
-      ? Array.from(selectRef.current.selectedOptions).map((o) => o.value)
+    const selected = projectRef.current
+      ? Array.from(projectRef.current.selectedOptions).map((o) => o.value)
       : [];
     if (selected.length > 0) params.set("project", selected.join(","));
 
@@ -71,38 +81,66 @@ export function ChequeFilterForm({ projects, statuses, banks, current, ownBankLa
         placeholder="Buscar por numero, eCheq o emisor"
         defaultValue={current.q ?? ""}
       />
-      <select className="select" name="status" defaultValue={current.status ?? ""}>
-        <option value="">Todos los estados</option>
+      <select
+        ref={statusRef}
+        className="select"
+        multiple
+        size={1}
+        defaultValue={selectedStatuses}
+        title="Mantené Cmd/Ctrl para seleccionar varios"
+        style={{ minHeight: "2.25rem" }}
+      >
         {statuses.map((entry) => (
           <option key={entry.status} value={entry.status}>
             {entry.status}
           </option>
         ))}
       </select>
-      <select className="select" name="bank" defaultValue={current.bank ?? ""}>
-        <option value="">Todos los bancos</option>
+      <select
+        ref={bankRef}
+        className="select"
+        multiple
+        size={1}
+        defaultValue={selectedBanks}
+        title="Mantené Cmd/Ctrl para seleccionar varios"
+        style={{ minHeight: "2.25rem" }}
+      >
         {banks.map((entry) => (
           <option key={entry.bankCanonical} value={entry.bankCanonical ?? ""}>
             {entry.bankCanonical}
           </option>
         ))}
       </select>
-      <select className="select" name="ownBank" defaultValue={current.ownBank ?? ""}>
-        <option value="">Todos mis bancos</option>
+      <select
+        ref={ownBankRef}
+        className="select"
+        multiple
+        size={1}
+        defaultValue={selectedOwnBanks}
+        title="Mantené Cmd/Ctrl para seleccionar varios"
+        style={{ minHeight: "2.25rem" }}
+      >
         {Object.entries(ownBankLabels).map(([value, label]) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
       </select>
-      <select className="select" name="hasIvaClient" defaultValue={current.hasIvaClient ?? ""}>
-        <option value="">Cliente IVA: todos</option>
+      <select
+        ref={hasIvaClientRef}
+        className="select"
+        multiple
+        size={1}
+        defaultValue={selectedHasIvaClient}
+        title="Mantené Cmd/Ctrl para seleccionar varios"
+        style={{ minHeight: "2.25rem" }}
+      >
         <option value="SI">Cliente IVA: SI</option>
         <option value="NO">Cliente IVA: NO</option>
       </select>
       {/* Multi-select proyecto */}
       <select
-        ref={selectRef}
+        ref={projectRef}
         className="select"
         multiple
         size={1}
